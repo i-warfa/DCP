@@ -19,22 +19,23 @@ from  scraper import ScanScraper
 
 
 class ScanScraperTestCase(unittest.TestCase):
-    
-    @classmethod
-    def setUpClass(self):
+
+    def setUp(self):
         self.scraper = ScanScraper()
     
-    def _accept_cookies(self):
-        self.scraper._accept_cookies()  
-
+    
     def test_navigate_to_3060_cards(self):
-        self.scraper._navigate_to_3060_cards()
+        url = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
+        self.scraper.driver.get(url)
         actual_value = str(self.scraper.driver.current_url)
         expected_value = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
         
         self.assertEqual(expected_value, actual_value)
 
+
     def test_in_stock_3060_cards(self):
+        url = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
+        self.scraper.driver.get(url)
         
         try:
             container = self.scraper.driver.find_element(By.XPATH, "//ul[@class='productColumns']")
@@ -46,7 +47,7 @@ class ScanScraperTestCase(unittest.TestCase):
     
         in_stock_list_of_links_for_3060 = self.scraper._in_stock_3060_cards()
 
-        in_stock_list_of_links_for_3060 = self.scraper._in_stock_3060_cards()
+        # in_stock_list_of_links_for_3060 = self.scraper._in_stock_3060_cards()
         
         l1 =[]
         
@@ -58,19 +59,27 @@ class ScanScraperTestCase(unittest.TestCase):
         
         return len(in_stock_list_of_links_for_3060)
     
+    
+    
     def test_data_collection(self):
+        url = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
+        self.scraper.driver.get(url)
+        
         expected_output = self.test_in_stock_3060_cards()
-        self.scraper._data_collection()
+        # self.scraper._data_collection()
         actual_output = self.scraper._data_collection()
         
         self.assertEqual(expected_output, actual_output)
     
     
+    def tearDown(self):
+        sleep(3)
+        self.scraper.driver.quit()
     
     
-    @classmethod
-    def tearDownClass(self):
-        pass
+    # @classmethod
+    # def tearDownClass(self):
+    #     pass
 
 
 

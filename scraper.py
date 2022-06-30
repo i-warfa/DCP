@@ -26,16 +26,16 @@ class ScanScraper:
         self.driver = webdriver.Chrome(executable_path="C:\\Users\\User\\miniconda3\\chromedriver.exe")
         self.driver.maximize_window()
         self.driver.get(landing_page_url)
-        self._accept_cookies()
+        self.accept_cookies()
     
     
     def scrape(self):
-        self._navigate_to_3060_cards()
+        self.navigate_to_3060_cards()
         self._in_stock_3060_cards()
         self._data_collection()
 
 
-    def _accept_cookies(self, xpath: str = "//div[@class='inner']//button"):
+    def accept_cookies(self, xpath: str = "//div[@class='inner']//button"):
         
         """ Automatically accepts webpage cookies."""
         
@@ -47,8 +47,8 @@ class ScanScraper:
             print("No Cookies Found!")
 
 
-    def _navigate_to_3060_cards(self):
-        
+    def navigate_to_3060_cards(self):
+    
         """ Automates all the actions that will navigate to the webpage showcasing all the Graphics Card listings. Returns the URL of the Webpage."""
         
         try:
@@ -133,7 +133,7 @@ class ScanScraper:
         product_list = []
         Product_Image_URL = []
 
-        for link in list_of_links_for_3060[0:3]:
+        for link in list_of_links_for_3060[0:len(list_of_links_for_3060)]:
 
             product_dictionary = {
                 'Product Name': [],
@@ -150,14 +150,14 @@ class ScanScraper:
 
             # Get Product Name
             try:
-                product_name = scraper.driver.find_element(By.XPATH, "//h1[@itemprop='name']")
+                product_name = self.driver.find_element(By.XPATH, "//h1[@itemprop='name']")
                 product_dictionary['Product Name'].append(product_name.text)
             except NoSuchElementException:
                 product_dictionary['Product Name'].append('N/A')
 
             # Get Product SKU/Friendly ID
             try:
-                sku = scraper.driver.find_element(By.XPATH, "(//strong[@itemprop='sku'])[1]")
+                sku = self.driver.find_element(By.XPATH, "(//strong[@itemprop='sku'])[1]")
                 product_dictionary['SKU'].append(sku.text)
             except NoSuchElementException:
                 product_dictionary['SKU'].append('N/A')
@@ -172,7 +172,7 @@ class ScanScraper:
 
             # Get Image URL
             try:
-                element = scraper.driver.find_element(By.XPATH, "//img[@class='zoomable-image'][1]")
+                element = self.driver.find_element(By.XPATH, "//img[@class='zoomable-image'][1]")
                 image_url = element.get_attribute('src')
                 Product_Image_URL.append(image_url)
                 product_dictionary['Product Image URL'].append(image_url)
@@ -181,7 +181,7 @@ class ScanScraper:
 
             # Item Price
             try:
-                price = scraper.driver.find_element(By.XPATH, "(//span[@class='price'])[4]")
+                price = self.driver.find_element(By.XPATH, "(//span[@class='price'])[4]")
                 product_dictionary['Price'].append(price.text)
             except NoSuchElementException:
                 product_dictionary['Price'].append('N/A')
@@ -206,10 +206,6 @@ class ScanScraper:
             urllib.request.urlretrieve(image_url, f'{images_folder}\{sku.text}.jpg')
             
         return len(next(os.walk(raw_data))[1])
-    
-    
-    
-    
 
 
 if __name__ == '__main__':
