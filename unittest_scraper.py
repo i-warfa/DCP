@@ -73,7 +73,7 @@ class ScanScraperTestCase(unittest.TestCase):
     
     
     def tearDown(self):
-        sleep(3)
+        sleep(1)
         self.scraper.driver.quit()
     
     

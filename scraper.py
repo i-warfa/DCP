@@ -1,55 +1,89 @@
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 
-import urllib.request
+
 from time import sleep
-import pandas as pd
+import urllib.request
 import json
 import os
 import shutil
 import uuid
+import pandas as pd
+import boto3
+from sqlalchemy import create_engine
+
+
+# Reminder to Update all Doc-String including info on sub-functions called within a main-function.
 
 
 class ScanScraper:
     
     """ A Web Scraper Class which collects data on Nvidia RTX 3060 Graphics Cards.
-        Contains all the functions that will navigate the webpage, extract product information and store the information locally.
+        Contains all the functions that will navigate the webpage, extract product information and store the information either locally or on the cloud.
     """
-    
+
     def __init__(self, landing_page_url: str = "https://www.scan.co.uk"):
-        self.driver = webdriver.Chrome(executable_path="C:\\Users\\User\\miniconda3\\chromedriver.exe")
-        self.driver.maximize_window()
+
+        options = Options()
+        options.add_argument("--headless") # Runs Chrome in headless mode.
+        options.add_argument('--disable-gpu')  # applicable to windows os only.
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument('--no-sandbox') # Bypass OS security model.
+        options.add_argument("--disable-logging") # Disables all logs.
+        options.add_argument("--window-size=1920,1080") # Sets the Width and Height of chrome window.
+        options.add_argument('start-maximized') # Maximises Window.
+        options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')
+        options.add_argument("--disable-extensions")
+        options.add_argument('disable-infobars')
+    
+        service = Service(executable_path=ChromeDriverManager().install())
+        
+        self.driver = webdriver.Chrome(service=service, options=options)
         self.driver.get(landing_page_url)
-        self.accept_cookies()
-    
-    
-    def scrape(self):
-        self.navigate_to_3060_cards()
-        self._in_stock_3060_cards()
-        self._data_collection()
+        
+        # self.driver.get_screenshot_as_file("screenshot.png") # Helps with Diagnostics when issue occurs running scraper in headless mode.
+        
+        print("\nWeb Scraper initiated. Web Driver executable is now running.\n")
+        
+    def scrape_site(self):
+
+        """ This method collates all the public and protected functions in the scraper class and calls each of the function.
+            It is the main methodthat operates the scraper.
+        """
+        
+        self.__accept_cookies()
+        self.__navigate_to_3060_cards()
+        self.__in_stock_3060_cards()
+        self.__data_collection()
+        self.__initiate_psql_database()
+        self._quit_driver()
 
 
-    def accept_cookies(self, xpath: str = "//div[@class='inner']//button"):
+    def __accept_cookies(self, xpath: str = "//div[@class='inner']//button"):
         
         """ Automatically accepts webpage cookies."""
         
         try:
-            sleep(1)
+            sleep(2)
             WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
             self.driver.find_element(By.XPATH, xpath).click()
         except TimeoutException:
             print("No Cookies Found!")
-
-
-    def navigate_to_3060_cards(self):
     
-        """ Automates all the actions that will navigate to the webpage showcasing all the Graphics Card listings. Returns the URL of the Webpage."""
+
+    def __navigate_to_3060_cards(self):
+    
+        """ Automates all the actions that will navigate to the webpage to display all the Graphics Card listings. 
+            Returns the URL of the Webpage.
+        """
         
         try:
             sleep(1)
@@ -72,44 +106,50 @@ class ScanScraper:
             # self.driver.find_element(By.XPATH, "//label[@for='filterInStock']").click()
         except TimeoutException:
             raise Exception("Could not redirect to RTX 3060 Graphics Cards page!")
-        
         return self.driver.current_url
 
-    def _in_stock_3060_cards(self):
+
+    def __in_stock_3060_cards(self):
         
         """ Returns a list of links for all the in-stock graphics on the webpage."""
         
         sleep(1)
         try:
-            container = self.driver.find_element(By.XPATH, "//ul[@class='productColumns']")
+            container = self.driver.find_element(By.XPATH, "(//ul[@class='productColumns'])")
+            # Alternative Web Element to get 'container': 
+            # container = self.driver.find_element(By.XPATH, "//div[@class='productsCont productList list']//ul[@class='productColumns']")
         except NoSuchElementException:
             container = self.driver.find_element(By.XPATH, "//body/div/div[@role='main']/div/div/div/div/div/ul[1]")
 
         list_of_3060_cards = container.find_elements(By.XPATH, './li')
+        # list of the out of stock cards that are 'hidden web elements':
         hidden_products = self.driver.find_elements(By.XPATH, "//li[contains(@data-price, '999999.00')]")
-        in_stock_3060_cards = []
         
+        # list of the in-stock cards obtained by comparing the 2 lists above and returning non-matching elements:
+        in_stock_3060_cards = []
         for i in list_of_3060_cards:
             if i not in hidden_products:
                 in_stock_3060_cards.append(i)
         
-        print(f"There are {len(in_stock_3060_cards)} cards in stock")
+        print(f"\nThere are {len(in_stock_3060_cards)} cards in stock")
         
+        # list of links for the in-stock cards obtained by extracting the 'href' via <a> of the web elements:
         in_stock_list_of_links_for_3060 = []
-        
         for rtx_3060 in in_stock_3060_cards:
             in_stock_list_of_links_for_3060.append(rtx_3060.find_element(By.TAG_NAME, 'a').get_attribute('href'))
+        
+        # self.driver.get_screenshot_as_file("screenshot2.png")
         
         return in_stock_list_of_links_for_3060
 
 
-    def _make_folder(self):
+    def __make_folder(self):
         
+        global root_dir, raw_data
+
         """ Creates a 'raw-data' folder in the directory to store product information, 
             if it has not been created already.
         """
-        
-        global root_dir, raw_data
         
         root_dir = os.getcwd()
         raw_data = os.path.join(root_dir, 'raw_data')
@@ -120,98 +160,171 @@ class ScanScraper:
         else:
             os.makedirs(raw_data)
 
-        return raw_data
-    
-    def _data_collection(self):
+        # return self.raw_data
+
+
+    def __aws_s3_client(self):
+
+        """ Create a low-level client with the service name."""
+        
+        self.s3 = boto3.client('s3')
+        self.s3_client = boto3.Session().client(service_name='s3')
+
+
+    def __data_collection(self):
         
         """ Scrapes Product Name, SKU, Unique ID, Price, Webpage Link and Product Image for each product entry.
-            Stores each product entry in 'raw-data' folder.        
+            Stores each product entry in a 'raw-data' folder locally and uploads it to an AWS S3 Bucket.
         """
-        self._make_folder()
-        raw_data = self._make_folder()
-        list_of_links_for_3060 = self._in_stock_3060_cards()
-        product_list = []
-        Product_Image_URL = []
-
+        
+        self.__make_folder()
+        # self.raw_data = self.__make_folder()
+        list_of_links_for_3060 = self.__in_stock_3060_cards()
+        self.product_list = []
+        
+        self.__aws_s3_client()
+        
+        # Loops through each product and scrapes product details. 
+        # Saves details locally in a 'raw_data' folder and uploads the folder to aws s3 bucket.
         for link in list_of_links_for_3060[0:len(list_of_links_for_3060)]:
 
-            product_dictionary = {
-                'Product Name': [],
+            indv_product_dictionary = {
                 'SKU': [],
+                'Product Name': [],
                 'Unique ID': [],
-                'Price': [],
+                'Price (£)': [],
                 'Link': [],
                 'Product Image URL': []
             }
 
             self.driver.get(link)
             sleep(1)
-            product_dictionary['Link'].append(link)
+            indv_product_dictionary['Link'].append(link)
 
-            # Get Product Name
-            try:
-                product_name = self.driver.find_element(By.XPATH, "//h1[@itemprop='name']")
-                product_dictionary['Product Name'].append(product_name.text)
-            except NoSuchElementException:
-                product_dictionary['Product Name'].append('N/A')
-
-            # Get Product SKU/Friendly ID
+            # Get Product SKU/Friendly ID:
             try:
                 sku = self.driver.find_element(By.XPATH, "(//strong[@itemprop='sku'])[1]")
-                product_dictionary['SKU'].append(sku.text)
+                indv_product_dictionary['SKU'].append(sku.text)
             except NoSuchElementException:
-                product_dictionary['SKU'].append('N/A')
+                indv_product_dictionary['SKU'].append('N/A')
+            
+            # Get Product Name:
+            try:
+                product_name = self.driver.find_element(By.XPATH, "//h1[@itemprop='name']")
+                indv_product_dictionary['Product Name'].append(product_name.text)
+            except NoSuchElementException:
+                indv_product_dictionary['Product Name'].append('N/A')
 
-            # Generate UUID (Unique)
+            # Generate UUID (Unique):
             try:
                 unique_id = uuid.uuid4()
                 str(unique_id)
-                product_dictionary['Unique ID'].append(str(unique_id))
+                indv_product_dictionary['Unique ID'].append(str(unique_id))
             except:
-                product_dictionary['Unique ID'].append('N/A')
+                indv_product_dictionary['Unique ID'].append('N/A')
 
-            # Get Image URL
+            # Get Image URL:
             try:
                 element = self.driver.find_element(By.XPATH, "//img[@class='zoomable-image'][1]")
                 image_url = element.get_attribute('src')
-                Product_Image_URL.append(image_url)
-                product_dictionary['Product Image URL'].append(image_url)
+                indv_product_dictionary['Product Image URL'].append(image_url)
             except NoSuchElementException:
-                product_dictionary['Product Image URL'].append('N/A')
+                indv_product_dictionary['Product Image URL'].append('N/A')
 
-            # Item Price
+            # Get Item Price:
             try:
                 price = self.driver.find_element(By.XPATH, "(//span[@class='price'])[4]")
-                product_dictionary['Price'].append(price.text)
+                price = str(price.text)
+                indv_product_dictionary['Price (£)'].append(price.strip('£'))
             except NoSuchElementException:
-                product_dictionary['Price'].append('N/A')
+                indv_product_dictionary['Price (£)'].append('N/A')
 
             # append each product dictionary to a list.
-            product_list.append(product_dictionary)
+            self.product_list.append(indv_product_dictionary)
 
-            # Create a folder for each product, named after its SKU.
-            product_entries = os.path.join(root_dir, raw_data, f"{(sku.text)}")
+            # Create a folder for each product entry, named after its SKU.
+            product_entries = os.path.join((root_dir), (raw_data), f"{(sku.text)}")
             os.makedirs(product_entries)
-            with open(f'{product_entries}\data.json', 'w') as fp:
-                json.dump(product_dictionary, fp)
+            with open(f'{product_entries}\data.json', 'w', encoding='utf-8') as fp:
+                json.dump(indv_product_dictionary, fp, ensure_ascii=False)
             
-            # Create an image Folder for each image
-            images_folder = os.path.join(product_entries, "Images")  
+            # Create an 'images' Folder for each product image.
+            images_folder = os.path.join(product_entries, "images")
             os.makedirs(images_folder)
             
-            # Overcome 'HTTPError: HTTP Error 403: Forbidden' error code by modifying 'user-agent' variable that is send with the request.
+            # Overcome 'HTTPError: HTTP Error 403: Forbidden' error code by modifying 'user-agent' variable that is sent with the request.
             opener=urllib.request.build_opener()
-            opener.addheaders=[('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/102.0.5005.115 Safari/537.36')]
+            opener.addheaders=[('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/103.0.0.0 Safari/537.36')]
             urllib.request.install_opener(opener)
             urllib.request.urlretrieve(image_url, f'{images_folder}\{sku.text}.jpg')
             
-        return len(next(os.walk(raw_data))[1])
+            sleep(1)
+
+            # Upload individual data.json files to the corresponding product folder at the s3 bucket destination
+            # e.g. : "s3://scanscraperbucket/raw_data/product_entry_1/"
+            # Format as such:  s3_client.upload_file(file_name, bucket, s3_object_name)
+            self.s3.upload_file(f'{product_entries}\data.json', 'scanscraperbucket', f'raw_data/{sku.text}/data.json')
+
+
+            # Upload individual product images to an 'Images' folder at the s3 bucket destination 
+            # e.g. : "s3://scanscraperbucket/raw_data/product_entry_1/Images/"
+            # Format as such:  s3_client.upload_file(file_name, bucket, s3_object_name)
+            self.s3.upload_file(f'{images_folder}\{sku.text}.jpg', 'scanscraperbucket', f'raw_data/{sku.text}/images/{sku.text}.jpg')
+
+
+        # Export the file containing all the GPU Product Data to a Json File and save within 'raw_data' Folder.
+        # Should be at the same directory level as the individual product entries
+        # Rememebr the 'product_list' variable contains all the individual products details as a list variable.
+        with open(f'{raw_data}/raw_data.json', 'w', encoding='utf-8') as f:
+            json.dump(self.product_list, f, ensure_ascii=False)
+        
+        # Upload said Json file to s3 bucket.
+        # Format as such:  s3_client.upload_file(file_name, bucket, s3_object_name)
+        self.s3.upload_file(f'{raw_data}/raw_data.json', 'scanscraperbucket', 'raw_data/raw_data.json')
+
+        # Does Number of sub-folder created equal to the number of products scraped?
+        self.product_folder_count = len(next(os.walk(raw_data))[1])
+        print(f"\n{self.product_folder_count} sub-folders have been created within the 'raw_data' folder of the root directory\n")
+
+        # Transform the GPU Product List into a Panda DataFrame for AWS RDS Database storage.
+        self.product_list_df = pd.DataFrame(self.product_list)    
+        print(f"{self.product_list_df}")
+        
+        return self.product_folder_count
+
+
+    def __initiate_psql_database(self):
+        
+        """ Configures & Initiates the connection to the AWS RDS PostgreSQL Database.
+            Uploads the scraped product data to the database.
+        """
+
+        DATABASE_TYPE = 'postgresql'
+        DBAPI = 'psycopg2'
+        ENDPOINT = "scanscraperdb.cbq5lslbgwez.us-east-1.rds.amazonaws.com" # Change it for your AWS endpoint
+        USER = 'postgres'
+        PASSWORD = "cinnamon"
+        PORT = 5432
+        DATABASE = 'postgres'
+
+        engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{ENDPOINT}:{PORT}/{DATABASE}")
+        engine.connect()
+        
+        # Upload product list dataframe to PostgreSQL database.
+        self.product_list_df.to_sql('gpu_products_data_set', engine, if_exists='replace')
+
+    
+    def _quit_driver(self):
+            
+            """ Closes the browser and quits the webdriver executable."""
+
+            sleep(4)
+            self.driver.quit()
+            print("\nEnd of session. Web Scraper is terminated. Webdriver excutable is no longer running.\n")
+
 
 
 if __name__ == '__main__':
     scraper = ScanScraper()
-    scraper.scrape()
-
-
-
+    scraper.scrape_site()
 

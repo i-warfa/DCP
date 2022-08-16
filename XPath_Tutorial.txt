@@ -3,5 +3,4 @@ How to create XPATH:
 Syntax ---->    //tagname[@attribute='value']
 
 e.g.   ---->     //input[@name='q']
-
 e.g.   ---->     //button[@id="save"]

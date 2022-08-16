@@ -1,0 +1,8 @@
+selenium
+webdriver-manager
+awscli
+pandas
+uuid
+sqlalchemy
+boto3
+psycopg2
