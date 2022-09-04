@@ -233,7 +233,8 @@ class BoxScraper():
             # Get Product Brand and Name:
             try:
                 product_brand = self.driver.find_element(By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)").text
-                indv_product_dictionary['Brand'].append(product_brand.text)
+                indv_product_dictionary['Brand'].append(product_brand
+                )
             except NoSuchElementException:
                 indv_product_dictionary['Brand'].append('N/A')
             
