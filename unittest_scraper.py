@@ -15,7 +15,7 @@ import json
 import os
 import shutil
 import uuid
-from  scraper import ScanScraper
+from  scraperdraft import ScanScraper
 
 
 class ScanScraperTestCase(unittest.TestCase):
