@@ -58,8 +58,7 @@ class BoxScraper():
 
         # sleep(1)
         self.driver.refresh()
-        sleep(1)
-        self.driver.maximize_window()
+        # sleep(1)
         # self.driver.get_screenshot_as_file("screenshot2.png")
 
         print("\nWeb Scraper initiated. Web Driver executable is now running.\n")
@@ -80,9 +79,9 @@ class BoxScraper():
 
     def __navigate_to_3060_cards(self):
         
-        """ Automatically accepts webpage cookies."""
+        """ Automatically accepts webpage cookies and navigates to products listings."""
         
-        sleep(3)
+        sleep(1)
         try:
             WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Computing']")))
             computing_tab = self.driver.find_element(By.XPATH, "//a[normalize-space()='Computing']")
@@ -90,18 +89,17 @@ class BoxScraper():
         except TimeoutException:
             print("No computing tab found!")
         
-        sleep(3)
+        sleep(1)
         try:
             WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Components + Storage']")))
             components_and_storage = self.driver.find_element(By.XPATH, "//a[normalize-space()='Components + Storage']")
             self.actions.move_to_element(components_and_storage).perform()
         except TimeoutException:
             print("No component tab found!")
-        
-        sleep(1)
+
         # self.driver.get_screenshot_as_file("screenshot3.png")
 
-        sleep(3)
+        sleep(1)
         try:
             WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]")))
             product_3060_cards = self.driver.find_element(By.XPATH, "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]")
@@ -110,11 +108,20 @@ class BoxScraper():
         except TimeoutException:
             print("No 3060 graphics product tab found!")
         
-        sleep(1)
+        sleep(2)
+        try:
+            list_view = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "(//div[@class='pq-list-view'])[1]")))
+            self.actions.move_to_element(list_view).perform()
+            self.actions.click(list_view).perform()
+        except TimeoutException:
+            print("Couldn't sort poroducts in list view, sorting is set to grid view!")
+        
+        # sleep(1)
         # self.driver.get_screenshot_as_file("screenshot4.png")
 
 
     def __scroll_down(self):
+        
         """A method for scrolling the page."""
 
         # Get scroll height.
@@ -194,12 +201,13 @@ class BoxScraper():
         """
         
         self.__make_folder()
+        sleep(1)
         self.__aws_s3_client()
 
         list_of_links_for_3060 = self.__list_of_3060_cards()
 
-        if len(list_of_links_for_3060) >= 9:
-            self.n = 9
+        if len(list_of_links_for_3060) >= 5:
+            self.n = 5
         else:
             self.n = len(list_of_links_for_3060)
         
@@ -222,6 +230,7 @@ class BoxScraper():
             self.driver.get(link)
 
             sleep(5)
+            self.__scroll_down()
             
             # Append link to dictionary:
             indv_product_dictionary['Link'].append(link)
@@ -232,14 +241,16 @@ class BoxScraper():
             
             # Get Product Brand and Name:
             try:
-                product_brand = self.driver.find_element(By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)").text
-                indv_product_dictionary['Brand'].append(product_brand
-                )
+                product_brand = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)")))
+                product_brand = product_brand.text
+                # product_brand = self.driver.find_element(By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)").text
+                indv_product_dictionary['Brand'].append(product_brand)
             except NoSuchElementException:
                 indv_product_dictionary['Brand'].append('N/A')
             
             try:
-                product_name = self.driver.find_element(By.XPATH, "//h2[@class='p-title-desc']")
+                product_name = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "//h2[@class='p-title-desc']")))
+                # product_name = self.driver.find_element(By.XPATH, "//h2[@class='p-title-desc']")
                 indv_product_dictionary['Product Name'].append(product_name.text)
             except NoSuchElementException:
                 indv_product_dictionary['Product Name'].append('N/A')
@@ -254,15 +265,17 @@ class BoxScraper():
 
             # Get Image URL:
             try:
-                self.image_url = self.driver.find_element(By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]").get_attribute('src')
+                self.image_url = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]"))).get_attribute('src')
+                # self.image_url = self.driver.find_element(By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]").get_attribute('src')
                 indv_product_dictionary['Product Image URL'].append(self.image_url)
             except NoSuchElementException:
                 indv_product_dictionary['Product Image URL'].append('N/A')
     
             # Get Item Price:
             try:
-                price = self.driver.find_element(By.XPATH, "(//span[@class='pq-price'])[1]")
+                price = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='pq-price'])[1]")))
                 price = str(price.text)
+                # price = self.driver.find_element(By.XPATH, "(//span[@class='pq-price'])[1]")
                 indv_product_dictionary['Price (£)'].append(price.strip('£'))
             except NoSuchElementException:
                 indv_product_dictionary['Price (£)'].append('N/A')
