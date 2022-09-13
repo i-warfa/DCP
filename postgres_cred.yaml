@@ -1,0 +1,7 @@
+DATABASE_TYPE: postgresql
+DBAPI: psycopg2
+ENDPOINT: scanscraperdb.cbq5lslbgwez.us-east-1.rds.amazonaws.com
+USER: postgres
+PASSWORD: cinnamon
+PORT: 5432
+DATABASE: postgres
