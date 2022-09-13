@@ -51,7 +51,7 @@ class BoxScraper():
         self.actions = ActionChains(self.driver)
         
         self.driver.get(landing_page_url)
-        sleep(27)
+        sleep(26)
         
         # Helps with Diagnostics when issue occurs running scraper in headless mode.
         # self.driver.get_screenshot_as_file("screenshot1.png")
@@ -81,7 +81,7 @@ class BoxScraper():
         
         """ Automatically accepts webpage cookies and navigates to products listings."""
         
-        sleep(1)
+        sleep(2)
         try:
             WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Computing']")))
             computing_tab = self.driver.find_element(By.XPATH, "//a[normalize-space()='Computing']")
@@ -133,7 +133,7 @@ class BoxScraper():
             self.driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
 
             # Wait to load the page.
-            sleep(3)
+            sleep(2)
 
             # Calculate new scroll height and compare with last scroll height.
             new_height = self.driver.execute_script("return document.body.scrollHeight")
@@ -149,11 +149,16 @@ class BoxScraper():
         
         """ Returns a list of links for all the in-stock graphics on the webpage."""
 
-        sleep(1)
+        sleep(2)
         self.__scroll_down()
 
-        list_of_3060_cards =  self.driver.find_elements(By.XPATH, "//div[@class='product-list p-small-list']//h3")
-        
+        if self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3"):
+            list_of_3060_cards = self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3")
+            print("Found the container holding the list of cards on first attempt!")
+        else:
+            list_of_3060_cards =  self.driver.find_elements(By.XPATH, "(//div[@class='product-list  p-small-list'])//h3")
+            print("Found the container holding the list of cards on second attempt!")
+
         print(f"\nThere are {len(list_of_3060_cards)} cards in stock")
         
         # list of links for  cards obtained by extracting the 'href' via <a> of the web elements:
@@ -229,7 +234,7 @@ class BoxScraper():
             
             self.driver.get(link)
 
-            sleep(5)
+            sleep(2)
             self.__scroll_down()
             
             # Append link to dictionary:
@@ -287,7 +292,7 @@ class BoxScraper():
             product_entries = os.path.join((root_dir), (raw_data), f"{self.sku}")
             os.makedirs(product_entries)
             with open(f'{product_entries}\data.json', 'w', encoding='utf-8') as fp:
-                json.dump(indv_product_dictionary, fp, ensure_ascii=False)
+                json.dump(indv_product_dictionary, fp, indent=4, ensure_ascii=False)
 
 
             # Create an 'images' Folder for each product image.
@@ -316,7 +321,7 @@ class BoxScraper():
 
         # Export the file containing all the GPU Product Data to a Json File and save locally within the 'raw_data' Folder.
         with open(f'{raw_data}/raw_data.json', 'w', encoding='utf-8') as f:
-            json.dump(self.product_list, f, ensure_ascii=False)
+            json.dump(self.product_list, f, indent=4, ensure_ascii=False)
         
 
         # Upload said Json file to s3 bucket.
@@ -360,8 +365,9 @@ class BoxScraper():
             
         """ Closes the browser and quits the webdriver executable."""
 
-        sleep(4)
+        sleep(1)
         shutil.rmtree(raw_data)
+        sleep(1)
         self.driver.quit()
         print("\nEnd of session. Web Scraper is terminated. Webdriver excutable is no longer running.\n")
 
