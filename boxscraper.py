@@ -33,8 +33,6 @@ class BoxScraper():
 
     def __init__(self, landing_page_url: str = "https://www.box.co.uk"):
 
-        with open("postgres_cred.yaml") as file:
-            self.creds = yaml.safe_load(file)
 
         options = Options()
         options.add_argument("--headless")
@@ -350,13 +348,13 @@ class BoxScraper():
             Uploads the scraped product data to the database.
         """
 
-        DATABASE_TYPE = self.creds["DATABASE_TYPE"]
-        DBAPI = self.creds["DBAPI"]
-        ENDPOINT = self.creds["ENDPOINT"]
-        USER = self.creds["USER"]
-        PASSWORD = self.creds["PASSWORD"]
+        DATABASE_TYPE = 'postgresql'
+        DBAPI = 'psycopg2'
+        ENDPOINT = "scanscraperdb.cbq5lslbgwez.us-east-1.rds.amazonaws.com" # Change it for your AWS endpoint
+        USER = 'postgres'
+        PASSWORD = "cinnamon"
         PORT = 5432
-        DATABASE = self.creds["DATABASE"]
+        DATABASE = 'postgres'
 
         engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{ENDPOINT}:{PORT}/{DATABASE}")
         engine.connect()
