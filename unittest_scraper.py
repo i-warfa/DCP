@@ -70,7 +70,6 @@ class BoxScraperTestCase(unittest.TestCase):
         # self.scraper._data_collection()
         actual_output = self.scraper.__data_collection()
         self.assertEqual(expected_output, actual_output)
-    
 
     def tearDown(self):
         sleep(1)
