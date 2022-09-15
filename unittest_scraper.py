@@ -1,77 +1,77 @@
 import unittest
 from selenium import webdriver
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 
-import urllib.request
 from time import sleep
-import pandas as pd
+import requests
+import mimetypes
+import urllib.request
 import json
+import yaml
 import os
 import shutil
 import uuid
-from  scraperdraft import ScanScraper
+import shortuuid
+import pandas as pd
+import boto3
+from sqlalchemy import create_engine
+from  boxscraper import BoxScraper
 
 
-class ScanScraperTestCase(unittest.TestCase):
+class BoxScraperTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.scraper = ScanScraper()
+        self.scraper = BoxScraper()
     
     
     def test_navigate_to_3060_cards(self):
-        url = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
+        url = 'https://www.box.co.uk/rtx-3060-graphics-cards'
         self.scraper.driver.get(url)
+
         actual_value = str(self.scraper.driver.current_url)
-        expected_value = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
-        
+        expected_value = 'https://www.box.co.uk/rtx-3060-graphics-cards'
         self.assertEqual(expected_value, actual_value)
 
 
     def test_in_stock_3060_cards(self):
-        url = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
+        url = 'https://www.box.co.uk/rtx-3060-graphics-cards'
         self.scraper.driver.get(url)
         
-        try:
-            container = self.scraper.driver.find_element(By.XPATH, "//ul[@class='productColumns']")
-        except NoSuchElementException:
-            container = self.scraper.driver.find_element(By.XPATH, "//body/div/div[@role='main']/div/div/div/div/div/ul[1]")
-            
-        list_of_3060_cards = container.find_elements(By.XPATH, './li')
-        hidden_products = self.scraper.driver.find_elements(By.XPATH, "//li[contains(@data-price, '999999.00')]")
-    
-        in_stock_list_of_links_for_3060 = self.scraper._in_stock_3060_cards()
+        number_of_cards_in_stock = self.scraper.driver.find_element(By.css, "div[class='product-list-header'] span")
+        number_of_cards_in_stock = int(number_of_cards_in_stock)
 
-        # in_stock_list_of_links_for_3060 = self.scraper._in_stock_3060_cards()
-        
-        l1 =[]
-        
-        expected_output = len(list_of_3060_cards) - len(hidden_products)
-        actual_output = len(in_stock_list_of_links_for_3060)
-        
+        if self.scraper.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3"):
+            list_of_3060_cards = self.scraper.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3")
+            print("Found the container holding the list of cards on first attempt!")
+        else:
+            list_of_3060_cards =  self.scraper.driver.find_elements(By.XPATH, "(//div[@class='product-list  p-small-list'])//h3")
+            print("Found the container holding the list of cards on second attempt!")
+
+        expected_output = len(number_of_cards_in_stock)
+        actual_output = len(list_of_3060_cards)
         self.assertEqual(expected_output, actual_output)
-        self.assertTrue(type(in_stock_list_of_links_for_3060) is type(l1))
         
-        return len(in_stock_list_of_links_for_3060)
-    
-    
+        return len(number_of_cards_in_stock)
     
     def test_data_collection(self):
-        url = 'https://www.scan.co.uk/shop/computer-hardware/gpu-nvidia-gaming/nvidia-geforce-rtx-3060-graphics-cards'
+        url = 'https://www.box.co.uk/rtx-3060-graphics-cards'
         self.scraper.driver.get(url)
-        
-        expected_output = self.test_in_stock_3060_cards()
+        sleep(25)
+        self.scraper.driver.refresh()
+        expected_output = self.scraper.n
         # self.scraper._data_collection()
-        actual_output = self.scraper._data_collection()
-        
+        actual_output = self.scraper.__data_collection()
         self.assertEqual(expected_output, actual_output)
     
-    
+
     def tearDown(self):
         sleep(1)
         self.scraper.driver.quit()
