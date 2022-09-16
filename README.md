@@ -326,7 +326,21 @@ def __initiate_psql_database(self):
     engine.connect()
     
     # Upload product list dataframe to PostgreSQL database.
-    self.product_list_df.to_sql('gpu_products_data_set', engine, if_exists='replace')
+    self.product_list_df.to_sql(
+                'gpu_products_data_set', 
+                engine, 
+                chunksize=500, 
+                if_exists='replace', 
+                dtype={
+                    "SKU": Text,
+                    "Brand": Text,
+                    "Product Name": Text,
+                    "Unique ID": Text,
+                    "Price (£)": FLOAT,
+                    "Link": Text,
+                    "Product Image URL": Text
+                    }
+                )
 ```
 
 ## Milestone 5 - Containerising the Webscraper

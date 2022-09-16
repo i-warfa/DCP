@@ -8,8 +8,6 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
-
-
 from time import sleep
 import requests
 import mimetypes
@@ -23,6 +21,7 @@ import shortuuid
 import pandas as pd
 import boto3
 from sqlalchemy import create_engine
+from sqlalchemy.types import Integer, Text, String, DateTime, VARCHAR, FLOAT
 
 
 class BoxScraper():
@@ -213,8 +212,8 @@ class BoxScraper():
 
         list_of_links_for_3060 = self.__list_of_3060_cards()
 
-        if len(list_of_links_for_3060) >= 5:
-            self.n = 5
+        if len(list_of_links_for_3060) >= 8:
+            self.n = 8
         else:
             self.n = len(list_of_links_for_3060)
         
@@ -224,68 +223,61 @@ class BoxScraper():
         # Saves details locally in a 'raw_data' folder and uploads the folder to aws s3 bucket.
         for link in list_of_links_for_3060[0:self.n]:
 
-            indv_product_dictionary = {
-                'SKU': [],
-                'Brand': [],
-                'Product Name': [],
-                'Unique ID': [],
-                'Price (£)': [],
-                'Link': [],
-                'Product Image URL': []
-            }
+            indv_product_dictionary = {}
             
             self.driver.get(link)
 
             sleep(2)
             self.__scroll_down()
             
-            # Append link to dictionary:
-            indv_product_dictionary['Link'].append(link)
-            
             # Get SKU/Friendly ID:
             self.sku = shortuuid.uuid()
-            indv_product_dictionary['SKU'].append(self.sku)
-            
-            # Get Product Brand and Name:
+            indv_product_dictionary['SKU'] = (self.sku)
+
+            # Get Product Brand:
             try:
                 product_brand = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)")))
                 product_brand = product_brand.text
                 # product_brand = self.driver.find_element(By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)").text
-                indv_product_dictionary['Brand'].append(product_brand)
+                indv_product_dictionary['Brand'] = (product_brand)
             except NoSuchElementException:
-                indv_product_dictionary['Brand'].append('N/A')
+                indv_product_dictionary['Brand'] = ('N/A')
             
+            # Get Product Name:
             try:
                 product_name = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "//h2[@class='p-title-desc']")))
                 # product_name = self.driver.find_element(By.XPATH, "//h2[@class='p-title-desc']")
-                indv_product_dictionary['Product Name'].append(product_name.text)
+                indv_product_dictionary['Product Name'] = (product_name.text)
             except NoSuchElementException:
-                indv_product_dictionary['Product Name'].append('N/A')
+                indv_product_dictionary['Product Name'] = ('N/A')
 
             # Generate UUID (Unique):
             try:
                 unique_id = uuid.uuid4()
                 unique_id = str(unique_id)
-                indv_product_dictionary['Unique ID'].append(str(unique_id))
+                indv_product_dictionary['Unique ID'] = (str(unique_id))
             except:
-                indv_product_dictionary['Unique ID'].append('N/A')
+                indv_product_dictionary['Unique ID'] = ('N/A')
 
-            # Get Image URL:
-            try:
-                self.image_url = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]"))).get_attribute('src')
-                # self.image_url = self.driver.find_element(By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]").get_attribute('src')
-                indv_product_dictionary['Product Image URL'].append(self.image_url)
-            except NoSuchElementException:
-                indv_product_dictionary['Product Image URL'].append('N/A')
-    
             # Get Item Price:
             try:
                 price = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='pq-price'])[1]")))
                 price = str(price.text)
                 # price = self.driver.find_element(By.XPATH, "(//span[@class='pq-price'])[1]")
-                indv_product_dictionary['Price (£)'].append(price.strip('£'))
+                indv_product_dictionary['Price (£)'] = (float(price.strip('£')))
             except NoSuchElementException:
-                indv_product_dictionary['Price (£)'].append('N/A')
+                indv_product_dictionary['Price (£)'] = (99999.99)
+            
+            # Append link to dictionary:
+            indv_product_dictionary['Link'] = (link)
+            
+            # Get Image URL:
+            try:
+                self.image_url = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]"))).get_attribute('src')
+                # self.image_url = self.driver.find_element(By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]").get_attribute('src')
+                indv_product_dictionary['Product Image URL'] = (self.image_url)
+            except NoSuchElementException:
+                indv_product_dictionary['Product Image URL'] = ('N/A')
 
             # append each product dictionary to a list.
             self.product_list.append(indv_product_dictionary)
@@ -350,7 +342,7 @@ class BoxScraper():
 
         DATABASE_TYPE = 'postgresql'
         DBAPI = 'psycopg2'
-        ENDPOINT = "scanscraperdb.cbq5lslbgwez.us-east-1.rds.amazonaws.com" # Change it for your AWS endpoint
+        ENDPOINT = "boxscraperdb.cbq5lslbgwez.us-east-1.rds.amazonaws.com" # Change it for your AWS endpoint
         USER = 'postgres'
         PASSWORD = "cinnamon"
         PORT = 5432
@@ -360,7 +352,22 @@ class BoxScraper():
         engine.connect()
         
         # Upload product list dataframe to PostgreSQL database.
-        self.product_list_df.to_sql('gpu_products_data_set', engine, if_exists='replace')
+        self.product_list_df.to_sql(
+                    'gpu_products_data_set', 
+                    engine, 
+                    chunksize=500, 
+                    if_exists='replace', 
+                    dtype={
+                        "SKU": Text,
+                        "Brand": Text,
+                        "Product Name": Text,
+                        "Unique ID": Text,
+                        "Price (£)": FLOAT,
+                        "Link": Text,
+                        "Product Image URL": Text
+                        }
+                    )
+        sleep(1)
 
 
     def _quit_driver(self):
