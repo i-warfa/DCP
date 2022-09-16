@@ -173,8 +173,8 @@ def __data_collection(self):
 
     list_of_links_for_3060 = self.__list_of_3060_cards()
 
-    if len(list_of_links_for_3060) >= 5:
-        self.n = 5
+    if len(list_of_links_for_3060) >= 8:
+        self.n = 8
     else:
         self.n = len(list_of_links_for_3060)
 
@@ -182,15 +182,7 @@ def __data_collection(self):
 
     for link in list_of_links_for_3060[0:self.n]:
 
-        indv_product_dictionary = {
-            'SKU': [],
-            'Brand': [],
-            'Product Name': [],
-            'Unique ID': [],
-            'Price (£)': [],
-            'Link': [],
-            'Product Image URL': []
-        }
+        indv_product_dictionary = {}
 
         self.driver.get(link)
 
@@ -198,48 +190,49 @@ def __data_collection(self):
         self.__scroll_down()
 
         # Append link to dictionary:
-        indv_product_dictionary['Link'].append(link)
+        indv_product_dictionary['Link'] = (link)
 
         # Get SKU/Friendly ID:
         self.sku = shortuuid.uuid()
-        indv_product_dictionary['SKU'].append(self.sku)
+        indv_product_dictionary['SKU'] = (self.sku)
 
         # Get Product Brand and Name:
         try:
             product_brand = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)")))
             product_brand = product_brand.text
-            indv_product_dictionary['Brand'].append(product_brand)
+            indv_product_dictionary['Brand'] = (product_brand)
         except NoSuchElementException:
-            indv_product_dictionary['Brand'].append('N/A')
+            indv_product_dictionary['Brand'] = ('N/A')
 
+        # Get Product Name:
         try:
             product_name = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "//h2[@class='p-title-desc']")))
-            indv_product_dictionary['Product Name'].append(product_name.text)
+            indv_product_dictionary['Product Name'] = (product_name.text)
         except NoSuchElementException:
-            indv_product_dictionary['Product Name'].append('N/A')
+            indv_product_dictionary['Product Name'] = ('N/A')
 
         # Generate UUID (Unique):
         try:
             unique_id = uuid.uuid4()
             unique_id = str(unique_id)
-            indv_product_dictionary['Unique ID'].append(str(unique_id))
+            indv_product_dictionary['Unique ID'] = (str(unique_id))
         except:
-            indv_product_dictionary['Unique ID'].append('N/A')
+            indv_product_dictionary['Unique ID'] = ('N/A')
 
         # Get Image URL:
         try:
             self.image_url = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]"))).get_attribute('src')
-            indv_product_dictionary['Product Image URL'].append(self.image_url)
+            indv_product_dictionary['Product Image URL'] = (self.image_url)
         except NoSuchElementException:
-            indv_product_dictionary['Product Image URL'].append('N/A')
+            indv_product_dictionary['Product Image URL'] = ('N/A')
 
         # Get Item Price:
         try:
             price = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='pq-price'])[1]")))
             price = str(price.text)
-            indv_product_dictionary['Price (£)'].append(price.strip('£'))
+            indv_product_dictionary['Price (£)'] = (float(price.strip('£')))
         except NoSuchElementException:
-            indv_product_dictionary['Price (£)'].append('N/A')
+            indv_product_dictionary['Price (£)'] = ('N/A')
 
         # append each product dictionary to a list.
         self.product_list.append(indv_product_dictionary)
@@ -311,6 +304,7 @@ Configured & initiated the connection to set up the AWS RDS PostgreSQL Database.
 
 ```python
 from sqlalchemy import create_engine
+from sqlalchemy.types import Integer, Text, String, DateTime, VARCHAR, FLOAT
 
 def __initiate_psql_database(self):
 
