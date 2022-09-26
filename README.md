@@ -51,39 +51,49 @@ class BoxScraper():
 
 
     def __navigate_to_3060_cards(self):
+        
+        """ Navigates to the page containing the product listings."""
+        
+        def __computing_tab(xpath: str = "//a[normalize-space()='Computing']"):
+            sleep(1)
+            try:
+                computing_tab = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(computing_tab).perform()
+            except TimeoutException:
+                print("No computing tab found!")
+        __computing_tab()
 
-        sleep(2)
-        try:
-            WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Computing']")))
-            computing_tab = self.driver.find_element(By.XPATH, "//a[normalize-space()='Computing']")
-            self.actions.move_to_element(computing_tab).perform()
-        except TimeoutException:
-            print("No computing tab found!")
 
-        sleep(1)
-        try:
-            WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Components + Storage']")))
-            components_and_storage = self.driver.find_element(By.XPATH, "//a[normalize-space()='Components + Storage']")
-            self.actions.move_to_element(components_and_storage).perform()
-        except TimeoutException:
-            print("No component tab found!")
+        def __components_and_storage_tab(xpath: str = "//a[normalize-space()='Components + Storage']"):
+            sleep(1)
+            try:
+                components_and_storage = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(components_and_storage).perform()
+            except TimeoutException:
+                print("No component tab found!")
+        __components_and_storage_tab()
 
-        sleep(1)
-        try:
-            WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]")))
-            product_3060_cards = self.driver.find_element(By.XPATH, "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]")
-            self.actions.move_to_element(product_3060_cards).perform()
-            self.actions.click(product_3060_cards).perform()
-        except TimeoutException:
-            print("No 3060 graphics product tab found!")
 
-        sleep(2)
-        try:
-            list_view = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "(//div[@class='pq-list-view'])[1]")))
-            self.actions.move_to_element(list_view).perform()
-            self.actions.click(list_view).perform()
-        except TimeoutException:
-            print("Couldn't sort poroducts in list view, sorting is set to grid view!")
+        def __products_3060_tab(xpath: str = "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]"):
+            sleep(1)
+            try:
+                product_3060_cards = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(product_3060_cards).perform()
+                self.actions.click(product_3060_cards).perform()
+            except TimeoutException:
+                print("No 3060 graphics product tab found!")
+        __products_3060_tab()
+
+
+        def __set_to_list_view_tab(xpath: str = "(//div[@class='pq-list-view'])[1]"):
+            sleep(1)
+            try:
+                list_view = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(list_view).perform()
+                self.actions.click(list_view).perform()
+            except TimeoutException:
+                print("Couldn't sort poroducts in list view, sorting is set to grid view!")
+        __set_to_list_view_tab()
 
     def __scroll_down(self):
 
@@ -109,24 +119,29 @@ class BoxScraper():
 
 
     def __list_of_3060_cards(self):
+        
+        """ Returns a list of links for all the in-stock graphics on the webpage."""
 
         sleep(2)
         self.__scroll_down()
-
-        if self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3"):
-            list_of_3060_cards = self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3")
-            print("Found the container holding the list of cards on first attempt!")
-        else:
-            list_of_3060_cards =  self.driver.find_elements(By.XPATH, "(//div[@class='product-list  p-small-list'])//h3")
-            print("Found the container holding the list of cards on second attempt!")
-
-        print(f"\nThere are {len(list_of_3060_cards)} cards in stock")
-
+        
+        def __check_container_exists():
+            if self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3"):
+                container = self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3")
+                print("Found the container holding the list of cards on first attempt!")
+            else:
+                container =  self.driver.find_elements(By.XPATH, "(//div[@class='product-list  p-small-list'])//h3")
+                print("Found the container holding the list of cards on second attempt!")
+            print(f"\nThere are {len(container)} cards in stock")
+            return container
+        
+        list_of_3060_cards = __check_container_exists()
+        
         # list of links for  cards obtained by extracting the 'href' via <a> of the web elements:
         list_of_links_for_3060 = []
         for rtx_3060 in list_of_3060_cards:
             list_of_links_for_3060.append(rtx_3060.find_element(By.TAG_NAME, 'a').get_attribute('href'))
-
+        
         return list_of_links_for_3060
 ```
 

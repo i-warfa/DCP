@@ -9,11 +9,8 @@ from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from time import sleep
-import requests
-import mimetypes
 import urllib.request
 import json
-import yaml
 import os
 import shutil
 import uuid
@@ -31,7 +28,6 @@ class BoxScraper():
     """
 
     def __init__(self, landing_page_url: str = "https://www.box.co.uk"):
-
 
         options = Options()
         options.add_argument("--headless")
@@ -54,13 +50,9 @@ class BoxScraper():
         self.driver.get(landing_page_url)
         sleep(26)
         
-        # Helps with Diagnostics when issue occurs running scraper in headless mode.
-        # self.driver.get_screenshot_as_file("screenshot1.png")
+        # self.driver.get_screenshot_as_file("screenshot1.png") Helps with Diagnostics when issue occurs running scraper in headless mode.
 
-        # sleep(1)
         self.driver.refresh()
-        # sleep(1)
-        # self.driver.get_screenshot_as_file("screenshot2.png")
 
         print("\nWeb Scraper initiated. Web Driver executable is now running.\n")
 
@@ -80,45 +72,51 @@ class BoxScraper():
 
     def __navigate_to_3060_cards(self):
         
-        """ Automatically accepts webpage cookies and navigates to products listings."""
+        """ Navigates to the page containing the product listings."""
         
-        sleep(2)
-        try:
-            WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Computing']")))
-            computing_tab = self.driver.find_element(By.XPATH, "//a[normalize-space()='Computing']")
-            self.actions.move_to_element(computing_tab).perform()
-        except TimeoutException:
-            print("No computing tab found!")
-        
-        sleep(1)
-        try:
-            WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "//a[normalize-space()='Components + Storage']")))
-            components_and_storage = self.driver.find_element(By.XPATH, "//a[normalize-space()='Components + Storage']")
-            self.actions.move_to_element(components_and_storage).perform()
-        except TimeoutException:
-            print("No component tab found!")
+        def __computing_tab(xpath: str = "//a[normalize-space()='Computing']"):
+            sleep(1)
+            try:
+                computing_tab = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(computing_tab).perform()
+                print("Clicked computing tab!")
+            except TimeoutException:
+                print("No computing tab found!")
+        __computing_tab()
 
-        # self.driver.get_screenshot_as_file("screenshot3.png")
 
-        sleep(1)
-        try:
-            WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]")))
-            product_3060_cards = self.driver.find_element(By.XPATH, "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]")
-            self.actions.move_to_element(product_3060_cards).perform()
-            self.actions.click(product_3060_cards).perform()
-        except TimeoutException:
-            print("No 3060 graphics product tab found!")
-        
-        sleep(2)
-        try:
-            list_view = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, "(//div[@class='pq-list-view'])[1]")))
-            self.actions.move_to_element(list_view).perform()
-            self.actions.click(list_view).perform()
-        except TimeoutException:
-            print("Couldn't sort poroducts in list view, sorting is set to grid view!")
-        
-        # sleep(1)
-        # self.driver.get_screenshot_as_file("screenshot4.png")
+        def __components_and_storage_tab(xpath: str = "//a[normalize-space()='Components + Storage']"):
+            sleep(1)
+            try:
+                components_and_storage = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(components_and_storage).perform()
+                print("Clicked components tab!")
+            except TimeoutException:
+                print("No component tab found!")
+        __components_and_storage_tab()
+
+
+        def __products_3060_tab(xpath: str = "(//a[contains(text(),'RTX 3060 Graphics Cards')])[1]"):
+            sleep(1)
+            try:
+                product_3060_cards = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(product_3060_cards).perform()
+                self.actions.click(product_3060_cards).perform()
+                print("Clicked 3060 graphics product tab!")
+            except TimeoutException:
+                print("No 3060 graphics product tab found!")
+        __products_3060_tab()
+
+
+        def __set_to_list_view_tab(xpath: str = "(//div[@class='pq-list-view'])[1]"):
+            sleep(1)
+            try:
+                list_view = WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, xpath)))
+                self.actions.move_to_element(list_view).perform()
+                self.actions.click(list_view).perform()
+            except TimeoutException:
+                print("Couldn't sort poroducts in list view, sorting is set to grid view!")
+        __set_to_list_view_tab()
 
 
     def __scroll_down(self):
@@ -152,15 +150,18 @@ class BoxScraper():
 
         sleep(2)
         self.__scroll_down()
-
-        if self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3"):
-            list_of_3060_cards = self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3")
-            print("Found the container holding the list of cards on first attempt!")
-        else:
-            list_of_3060_cards =  self.driver.find_elements(By.XPATH, "(//div[@class='product-list  p-small-list'])//h3")
-            print("Found the container holding the list of cards on second attempt!")
-
-        print(f"\nThere are {len(list_of_3060_cards)} cards in stock")
+        
+        def __check_container_exists():
+            if self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3"):
+                container = self.driver.find_elements(By.XPATH, "(//div[@class='product-list p-small-list'])//h3")
+                print("Found the container holding the list of cards on first attempt!")
+            else:
+                container =  self.driver.find_elements(By.XPATH, "(//div[@class='product-list  p-small-list'])//h3")
+                print("Found the container holding the list of cards on second attempt!")
+            print(f"\nThere are {len(container)} cards in stock")
+            return container
+        
+        list_of_3060_cards = __check_container_exists()
         
         # list of links for  cards obtained by extracting the 'href' via <a> of the web elements:
         list_of_links_for_3060 = []
@@ -219,115 +220,115 @@ class BoxScraper():
         
         self.product_list = []
 
-        # Loops through each product and scrapes product details. 
-        # Saves details locally in a 'raw_data' folder and uploads the folder to aws s3 bucket.
+        # Loops through each product and scrapes product details. Saves details locally in a 'raw_data' folder and uploads the folder to aws s3 bucket.
         for link in list_of_links_for_3060[0:self.n]:
 
             indv_product_dictionary = {}
             
             self.driver.get(link)
-
             sleep(2)
             self.__scroll_down()
-            
-            # Get SKU/Friendly ID:
-            self.sku = shortuuid.uuid()
-            indv_product_dictionary['SKU'] = (self.sku)
 
-            # Get Product Brand:
-            try:
-                product_brand = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)")))
-                product_brand = product_brand.text
-                # product_brand = self.driver.find_element(By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)").text
-                indv_product_dictionary['Brand'] = (product_brand)
-            except NoSuchElementException:
-                indv_product_dictionary['Brand'] = ('N/A')
-            
-            # Get Product Name:
-            try:
-                product_name = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "//h2[@class='p-title-desc']")))
-                # product_name = self.driver.find_element(By.XPATH, "//h2[@class='p-title-desc']")
-                indv_product_dictionary['Product Name'] = (product_name.text)
-            except NoSuchElementException:
-                indv_product_dictionary['Product Name'] = ('N/A')
+            def get_sku():
+                sku = shortuuid.uuid()
+                indv_product_dictionary['SKU'] = (sku)
+                return sku   
+            get_sku()
+            sku = get_sku()
 
-            # Generate UUID (Unique):
-            try:
-                unique_id = uuid.uuid4()
-                unique_id = str(unique_id)
-                indv_product_dictionary['Unique ID'] = (str(unique_id))
-            except:
-                indv_product_dictionary['Unique ID'] = ('N/A')
+            def get_product_brand_name():
+                try:
+                    product_brand = (WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='breadcrumb-item'][5]//span)")))).text
+                    indv_product_dictionary['Brand'] = (product_brand)
+                except NoSuchElementException:
+                    indv_product_dictionary['Brand'] = ('N/A')
+            get_product_brand_name()
 
-            # Get Item Price:
-            try:
-                price = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='pq-price'])[1]")))
-                price = str(price.text)
-                # price = self.driver.find_element(By.XPATH, "(//span[@class='pq-price'])[1]")
-                indv_product_dictionary['Price (£)'] = (float(price.strip('£')))
-            except NoSuchElementException:
-                indv_product_dictionary['Price (£)'] = (99999.99)
-            
+            def get_product_name():
+                try:
+                    product_name = (WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "//h2[@class='p-title-desc']")))).text
+                    indv_product_dictionary['Product Name'] = (product_name)
+                except NoSuchElementException:
+                    indv_product_dictionary['Product Name'] = ('N/A')
+            get_product_name()
+
+            def generate_uuid():
+                try:
+                    unique_id = uuid.uuid4()
+                    unique_id = str(unique_id)
+                    indv_product_dictionary['Unique ID'] = (str(unique_id))
+                except:
+                    indv_product_dictionary['Unique ID'] = ('N/A')
+            generate_uuid()
+
+            def get_price():
+                try:
+                    price = str(WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//span[@class='pq-price'])[1]"))).text)
+                    # price = str(price.text)
+                    indv_product_dictionary['Price (£)'] = (float(price.strip('£')))
+                except NoSuchElementException:
+                    indv_product_dictionary['Price (£)'] = (99999.99)
+            get_price()
+
             # Append link to dictionary:
             indv_product_dictionary['Link'] = (link)
             
-            # Get Image URL:
-            try:
-                self.image_url = WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]"))).get_attribute('src')
-                # self.image_url = self.driver.find_element(By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]").get_attribute('src')
-                indv_product_dictionary['Product Image URL'] = (self.image_url)
-            except NoSuchElementException:
-                indv_product_dictionary['Product Image URL'] = ('N/A')
+            def get_image_url():
+                try:
+                    image_url = str(WebDriverWait(self.driver, 15).until(EC.visibility_of_element_located((By.XPATH, "(//img[@class='p-image-button pq-images-small pq-images-show'])[1]"))).get_attribute('src'))
+                    indv_product_dictionary['Product Image URL'] = (image_url)
+                except NoSuchElementException:
+                    indv_product_dictionary['Product Image URL'] = ('N/A')
+                return image_url
+            get_image_url()
+            image_url = get_image_url()
 
             # append each product dictionary to a list.
             self.product_list.append(indv_product_dictionary)
 
             # Create a folder for each product entry, named after its SKU.
-            product_entries = os.path.join((root_dir), (raw_data), f"{self.sku}")
+            product_entries = os.path.join((root_dir), (raw_data), f"{sku}")
             os.makedirs(product_entries)
             with open(f'{product_entries}\data.json', 'w', encoding='utf-8') as fp:
                 json.dump(indv_product_dictionary, fp, indent=4, ensure_ascii=False)
-
 
             # Create an 'images' Folder for each product image.
             images_folder = os.path.join(product_entries, "images")
             os.makedirs(images_folder)
             sleep(1)
 
+            def upload_product_JSON_files_to_s3():
+                self.s3.upload_file(f'{product_entries}\data.json', 'boxscraperbucket', f'raw_data/{sku}/data.json')
+                sleep(1)
+            upload_product_JSON_files_to_s3()
 
-            # Upload individual data.json files to the corresponding product folder at the s3 bucket destination.
-            # Format as such:  s3_client.upload_file(file_name, bucket, s3_object_name)
-            self.s3.upload_file(f'{product_entries}\data.json', 'boxscraperbucket', f'raw_data/{self.sku}/data.json')
-            sleep(1)
-
-
-            # Upload individual product images to an 'Images' folder at the s3 bucket destination 
-            # e.g. : "s3://boxscraperbucket/raw_data/product_entry_1/Images/"
-            # Format as such:  s3_client.upload_file(file_name, bucket, s3_object_name)
-            # Overcome 'HTTPError: HTTP Error 403: Forbidden' error code by modifying 'user-agent' variable that is sent with the request.
-            opener=urllib.request.build_opener()
-            opener.addheaders=[('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36')]
-            urllib.request.install_opener(opener)
-            urllib.request.urlretrieve(self.image_url, f'{images_folder}\{self.sku}.jpg')
-            sleep(1)            
-            self.s3.upload_file(f'{images_folder}\{self.sku}.jpg', 'boxscraperbucket', f'raw_data/{self.sku}/images/{self.sku}.jpg')
+            def upload_product_images_to_s3():
+                opener=urllib.request.build_opener()
+                opener.addheaders=[('User-Agent','Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36')]
+                urllib.request.install_opener(opener)
+                urllib.request.urlretrieve(image_url, f'{images_folder}\{sku}.jpg')
+                sleep(1)            
+                self.s3.upload_file(f'{images_folder}\{sku}.jpg', 'boxscraperbucket', f'raw_data/{sku}/images/{sku}.jpg')
+            upload_product_images_to_s3
 
 
-        # Export the file containing all the GPU Product Data to a Json File and save locally within the 'raw_data' Folder.
-        with open(f'{raw_data}/raw_data.json', 'w', encoding='utf-8') as f:
-            json.dump(self.product_list, f, indent=4, ensure_ascii=False)
+        def create_json_file_containing_all_entry_data():
+            
+            """ Export the json file containing all the GPU Product Data to a Json File and save locally within the 'raw_data' Folder.
+                Upload the file to the s3 bucket.
+            """
+
+            with open(f'{raw_data}/raw_data.json', 'w', encoding='utf-8') as f:
+                json.dump(self.product_list, f, indent=4, ensure_ascii=False)
+            
+            self.s3.upload_file(f'{raw_data}/raw_data.json', 'boxscraperbucket', 'raw_data/raw_data.json')
+        create_json_file_containing_all_entry_data()
         
 
-        # Upload said Json file to s3 bucket.
-        # Format as such:  s3_client.upload_file(file_name, bucket, s3_object_name)
-        self.s3.upload_file(f'{raw_data}/raw_data.json', 'boxscraperbucket', 'raw_data/raw_data.json')
-
-        # Does Number of sub-folder created equal to the number of products scraped?
         self.product_folder_count = len(next(os.walk(raw_data))[1])
         print(f"\n{self.product_folder_count} sub-folders have been created within the 'raw_data' folder of the root directory\n")
-
+    
         # Transform the GPU Product List into a Panda DataFrame for AWS RDS Database storage.
-        
         self.product_list_df = pd.DataFrame(self.product_list)    
         print(f"{self.product_list_df}")
         
